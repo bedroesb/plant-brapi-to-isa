@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--endpoint', help="a BrAPi server endpoint", type=str)
 parser.add_argument('-t', '--trials', help="comma separated list of trial Ids", type=str, action='append')
 parser.add_argument('-s', '--studies', help="comma separated list of study Ids", type=str, action='append')
-SERVER = 'https://test-server.brapi.org/brapi/v1/'
+SERVER = 'http://localhost:8000/'
 
 logger.debug('Argument List:' + str(sys.argv))
 args = parser.parse_args()
@@ -80,7 +80,7 @@ def paging(url: object, params: object, data: object, method: object) -> object:
         params['pageSize'] = pagesize
         print('retrieving page', page, 'of', maxcount, 'from', url)
         print(params)
-        logging.info("paging params:", params)
+        logging.info("paging params:" + str(params))
 
         if method == 'GET':
             print("GETting", url)
@@ -100,9 +100,9 @@ def paging(url: object, params: object, data: object, method: object) -> object:
                               headers=headers)
             print(r)
 
-        if r.status_code != requests.codes.ok:
+        if r.status_code != requests.codes.ok: #pylint: disable=no-member
             print(r)
-            logging.error("problem with request: ", r)
+            logging.error("problem with request: " + str(r))
             raise RuntimeError("Non-200 status code")
 
         maxcount = int(r.json()['metadata']['pagination']['totalPages'])
@@ -129,7 +129,7 @@ class BrapiClient:
             params = {'page': page, 'pageSize': pagesize}
 
             r = requests.get(self.endpoint + 'trials', params=params)
-            if r.status_code != requests.codes.ok:
+            if r.status_code != requests.codes.ok: #pylint: disable=no-member
                 raise RuntimeError("Non-200 status code")
             maxcount = int(r.json()['metadata']['pagination']['totalCount'])
             for this_trial in r.json()['result']['data']:
@@ -137,14 +137,14 @@ class BrapiClient:
                 # print("trial ", this_trial ," in page: ", page)
             page += 1
             # print("trial page: ", page)
-            logging.info("trial page: ", page)
+            logging.info("trial page: " + str(page))
 
     def get_phenotypes(self):
         """Returns a phenotype information from a BrAPI endpoint."""
         url = self.endpoint + "phenotype-search"
         r = requests.get(url)
-        if r.status_code != requests.codes.ok:
-            logging.error("check over here", r)
+        if r.status_code != requests.codes.ok:  #pylint: disable=no-member
+            logging.error("check over here" + str(r))
             logging.fatal('Could not decode response from server!')
             raise RuntimeError("Non-200 status code")
         phenotypes = r.json()['result']['data']
@@ -154,8 +154,8 @@ class BrapiClient:
         """Returns germplasm information from a BrAPI endpoint."""
         url = self.endpoint + "germplasm-search"
         r = requests.get(url)
-        if r.status_code != requests.codes.ok:
-            logging.error("check over here", r)
+        if r.status_code != requests.codes.ok: #pylint: disable=no-member
+            logging.error("check over here" + str(r))
             logging.fatal('Could not decode response from server!')
             raise RuntimeError("Non-200 status code")
         these_germplasms = r.json()['result']['data']
@@ -164,9 +164,9 @@ class BrapiClient:
     def get_study(self, study_identifier):
         """"Given a BRAPI study object from a BRAPI endpoint server"""
         r = requests.get(self.endpoint + 'studies/' + str(study_identifier))
-        if r.status_code != requests.codes.ok:
+        if r.status_code != requests.codes.ok: #pylint: disable=no-member
             print(r)
-            logging.error("problem with request get_study: ", r)
+            logging.error("problem with request get_study: " + str(r))
             raise RuntimeError("Non-200 status code")
         return r.json()["result"]
 
@@ -180,9 +180,9 @@ class BrapiClient:
             r = requests.get(self.endpoint + "studies/" + study_identifier +
                              '/germplasm', params={'page': page})
 
-            logging.debug("from 'get_germplasm_in_study' function page:", page, "request:",
-                          len(r.json()['result']['data']))
-            if r.status_code != requests.codes.ok:
+            logging.debug("from 'get_germplasm_in_study' function page:" + str(page) + "request:" +
+                          str(len(r.json()['result']['data'])))
+            if r.status_code != requests.codes.ok: #pylint: disable=no-member
                 raise RuntimeError("Non-200 status code")
             all_germplasms = all_germplasms + (r.json()['result']['data'])
         return all_germplasms
@@ -212,7 +212,7 @@ class BrapiClient:
         """" Given a BRAPI study identifier,obtains a BRAPI study object """
         url = self.endpoint + 'studies/' + str(study_identifier)
         r = requests.get(url)
-        if r.status_code != requests.codes.ok:
+        if r.status_code != requests.codes.ok: #pylint: disable=no-member
             raise RuntimeError("Non-200 status code")
         this_study = r.json()['result']
         return this_study
@@ -220,7 +220,7 @@ class BrapiClient:
     def get_study_observed_variables(self, brapi_study_id):
         """" Given a BRAPI study identifier, returns a list of BRAPI observation Variables objects """
         r = requests.get(self.endpoint + "studies/" + brapi_study_id + '/observationVariables')
-        if r.status_code != requests.codes.ok:
+        if r.status_code != requests.codes.ok: #pylint: disable=no-member
             raise RuntimeError("Non-200 status code")
         all_obsvars = r.json()['result']['data']
 
@@ -279,25 +279,30 @@ class BrapiClient:
         return charax_per_germplasm
 
     OBS_UNIT_CALL = " "
-    @staticmethod
-    def get_obs_unit_call():
-        global OBS_UNIT_CALL
-        if OBS_UNIT_CALL == " " :
-            r = requests.get(SERVER +"calls")
-            if r.status_code != requests.codes.ok:
-                logger.debug("\n\nERROR in get_obs_units_in_study " + r.status_code + r.json)
-                raise RuntimeError("Non-200 status code")
-            #available_calls = json.load (r.json()['result']['data'])
-            if ('studies/{studyDbId}/observationUnits' not in r.json()):
-                logger.debug(" GOT OBSERVATIONUNIT THE 1.1 WAY")
-                OBS_UNIT_CALL = "/observationUnits"
-            else:
-                OBS_UNIT_CALL = "/observationunits"
-        return  OBS_UNIT_CALL
+    # @staticmethod
+    # def get_obs_unit_call():
+    #     global OBS_UNIT_CALL
+    #     if OBS_UNIT_CALL == " " :
+    #         r = requests.get(SERVER +"calls")
+    #         if r.status_code != requests.codes.ok: #pylint: disable=no-member
+    #             logger.debug("\n\nERROR in get_obs_units_in_study " + r.status_code + r.json)
+    #             raise RuntimeError("Non-200 status code")
+    #         #available_calls = json.load (r.json()['result']['data'])
+    #         if ('studies/{studyDbId}/observationUnits' not in r.json()):
+    #             logger.debug(" GOT OBSERVATIONUNIT THE 1.1 WAY")
+    #             OBS_UNIT_CALL = "/observationUnits"
+    #         else:
+    #             OBS_UNIT_CALL = "/observationunits"
+    #     return  OBS_UNIT_CALL
+
+    # def get_obs_units_in_study(self, study_identifier):
+    #     """ Given a BRAPI study identifier, return an list of BRAPI observation units"""
+    #     for obs_unit in paging(self.endpoint + "studies/" + study_identifier + get_obs_unit_call(), None, None,  'GET'):
+    #         yield obs_unit
 
     def get_obs_units_in_study(self, study_identifier):
         """ Given a BRAPI study identifier, return an list of BRAPI observation units"""
-        for obs_unit in paging(self.endpoint + "studies/" + study_identifier + get_obs_unit_call(), None, None,  'GET'):
+        for obs_unit in paging(self.endpoint + "studies/" + study_identifier + "/observationUnits", None, None,  'GET'):
             yield obs_unit
 
     def get_germplasm(self, germplasm_id):
@@ -308,7 +313,7 @@ class BrapiClient:
         for page in range(0, num_pages):
             r = requests.get(self.endpoint + 'germplasm/' + str(germplasm_id) + 'attributes', params={'page': page})
             # print("from get_germplasm_attributes function: ", page, "total count:", len(r.json()['result']['data']))
-            if r.status_code != requests.codes.ok:
+            if r.status_code != requests.codes.ok: #pylint: disable=no-member
                 raise RuntimeError("Non-200 status code")
             all_germplasm_attributes = all_germplasm_attributes + r.json()['result']['data']
         # print("from function, nb obsunits:: ", len(all_germplasm_attributes))
@@ -364,9 +369,9 @@ def load_trials():
             url=SERVER + 'trials/'+trial_id
             logger.debug(url)
             r = requests.get(url)
-            if r.status_code != requests.codes.ok:
+            if r.status_code != requests.codes.ok: #pylint: disable=no-member
                 print(r)
-                logging.error("problem with request: ", r)
+                logging.error("problem with request: " + str(r))
                 raise RuntimeError("Non-200 status code")
             yield r.json()['result']
 
@@ -590,7 +595,7 @@ def get_output_path(path):
         logger.exception(oserror)
         if oserror.errno != errno.EEXIST:
             raise
-    return "outputdir/" + path + "/"
+    return path + "/"
 
 
 def main(arg):
@@ -710,7 +715,7 @@ def main(arg):
                 # Getting the relevant germplasm used for that observation event:
                 # ---------------------------------------------------------------
                 this_source = study.get_source(obs_unit['germplasmName'])
-                logger.debug("testing for the source reference: ", this_source)
+                logger.debug("testing for the source reference:" + str(this_source))
 
                 if this_source is not None:
                     this_sample = Sample(
@@ -818,7 +823,7 @@ def main(arg):
 
                     # TODO: Add Comment[Factor Values] : iterate through BRAPI treatments to obtain all possible values for a given Factor
                 else:
-                    logger.info("Can't find a reference to known source for that observation unit:", this_source)
+                    logger.info("Can't find a reference to known source for that observation unit:" + str(this_source))
 
                 # Creating the corresponding ISA sample entity for structure the document:
                 # ------------------------------------------------------------------------
@@ -898,7 +903,7 @@ def main(arg):
                 logger.info('CONVERSION FAILED!...')
 
             try:
-                variable_records = create_isa_tdf_from_obsvars(get_study_observed_variables(study_id))
+                variable_records = create_isa_tdf_from_obsvars(client.get_study_observed_variables(study_id))
                 # Writing Trait Definition File:
                 # ------------------------------
                 write_records_to_file(this_study_id=str(study_id),
@@ -911,7 +916,11 @@ def main(arg):
             # Getting Variable Data and writing Measurement Data File
             # -------------------------------------------------------
             try:
-                data_readings = create_isa_obs_data_from_obsvars(get_obs_units_in_study(study_id))
+                obsvarlist = []
+                for i in client.get_obs_units_in_study(study_id):
+                    obsvarlist.append(i)
+
+                data_readings = create_isa_obs_data_from_obsvars(obsvarlist)
                 write_records_to_file(this_study_id=str(study_id), this_directory=output_directory, records=data_readings,
                                       filetype="d_")
             except Exception as ioe:
