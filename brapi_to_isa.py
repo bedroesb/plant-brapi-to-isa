@@ -48,7 +48,7 @@ logger.info("\n----------------\ntrials IDs to be exported : "
             + str(STUDY_IDS) + "\nTarget endpoint :  "
             + str(SERVER) + "\n----------------" )
 
-# SERVER = 'https://urgi.versailles.inra.fr/gnpis-core-srv/brapi/v1/'
+SERVER = 'https://urgi.versailles.inra.fr/gnpis-core-srv/brapi/v1/'
 # SERVER = 'https://www.eu-sol.wur.nl/webapi/tomato/brapi/v1/'
 # SERVER = 'https://pippa.psb.ugent.be/pippa_experiments/brapi/v1/'
 # SERVER = 'https://triticeaetoolbox.org/wheat/brapi/v1/'
@@ -70,7 +70,7 @@ def paging(url: object, params: object, data: object, method: object) -> object:
     """ "Housekeeping" function to deal with paging during http calls"""
     page = 0
     #pagesize = 1000
-    pagesize = 5000 # Temp hack before fixing gnpis observaiton unit endpoint (todo january 2019)
+    pagesize = 1000 # Temp hack before fixing gnpis observaiton unit endpoint (todo january 2019)
     maxcount = None
     # set a default dict for parameters
     if params is None:
@@ -441,7 +441,8 @@ def create_isa_study(brapi_study_id, investigation):
 
     this_study = Study(filename="s_" + str(brapi_study_id) + ".txt")
     this_study.identifier = brapi_study['studyDbId']
-    this_study.description = brapi_study['additionalInfo']['description']
+    #NOTE: VIB BrAPI specific:
+    #this_study.description = brapi_study['additionalInfo']['description']
 
     if 'name' in brapi_study:
         this_study.title = brapi_study['name']
@@ -618,9 +619,11 @@ def main(arg):
             contact = Person(first_name="Joke", last_name="Baute", #still hardcoded
             affiliation=brapicontact['institutionName'], email=brapicontact['email'])
             investigation.contacts.append(contact)
-        publication = Publication(title= trial['additionalInfo']['title'], 
-        pubmed_id=trial['additionalInfo']['PMID'], doi=trial['additionalInfo']['doi'])
-        investigation.publications.append(publication)
+        #NOTE: publication details from VIB BrAPI:
+        #publication = Publication(title= trial['additionalInfo']['title'], 
+        #pubmed_id=trial['additionalInfo']['PMID'], doi=trial['additionalInfo']['doi'])
+        #investigation.publications.append(publication)
+
         # iterating through the BRAPI studies associated to a given BRAPI trial:
         for study in trial['studies']:
 
@@ -668,8 +671,8 @@ def main(arg):
                 # Creating isa characteristics from germplasm attributes.
                 # -------------------------------------------------------
                 for key in germ.keys():
-
-                    if isinstance(germ[key], list):
+                    #NOTE: "and key != 'donors'" is temporary fix for urgi endpoints (they have dict instead of list)
+                    if isinstance(germ[key], list) and key != 'donors':
                         # print("HERE: ", germ[key])
                         ontovalue = ";".join(germ[key])
                         c = Characteristic(category=OntologyAnnotation(term=str(key)),
