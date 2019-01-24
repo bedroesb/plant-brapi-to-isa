@@ -9,7 +9,7 @@ import argparse
 
 from isatools import isatab
 from isatools.model import Investigation, OntologyAnnotation, OntologySource, Assay, Study, Characteristic, Source, \
-    Sample, Protocol, Process, StudyFactor, FactorValue, DataFile, ParameterValue, Comment, ProtocolParameter, plink
+    Sample, Protocol, Process, StudyFactor, FactorValue, DataFile, ParameterValue, Comment, ProtocolParameter, plink, Person, Publication
 
 __author__ = 'proccaserra (Philippe Rocca-Serra)'
 
@@ -392,36 +392,36 @@ def load_trials():
 ###########################################################
 
 
-def create_isa_investigations(endpoint):
-    """Create ISA investigations from a BrAPI endpoint, starting from the trials information"""
-    client = BrapiClient(endpoint)
-    endpoint_investigations = []
-    for this_trial in client.get_brapi_trials():
-        this_investigation = Investigation()
-        this_investigation.identifier = this_trial['trialDbId']
-        this_investigation.title = this_trial['trialName']
-        # investigation.comments.append(Comment("Investigation Start Date", trial['startDate']))
-        # investigation.comments.append(Comment("Investigation End Date", trial['endDate']))
-        # investigation.comments.append(Comment("Active", trial['active']))
+# def create_isa_investigations(endpoint):
+#     """Create ISA investigations from a BrAPI endpoint, starting from the trials information"""
+#     client = BrapiClient(endpoint)
+#     endpoint_investigations = []
+#     for this_trial in client.get_brapi_trials():
+#         this_investigation = Investigation()
+#         this_investigation.identifier = this_trial['trialDbId']
+#         this_investigation.title = this_trial['trialName']
+#         # investigation.comments.append(Comment("Investigation Start Date", trial['startDate']))
+#         # investigation.comments.append(Comment("Investigation End Date", trial['endDate']))
+#         # investigation.comments.append(Comment("Active", trial['active']))
 
-        for this_study in this_trial['studies']:
-            this_study = create_isa_study(this_study['studyDbId'])
-            this_investigation.studies.append(this_study)
-            endpoint_investigations.append(this_investigation)
-    return endpoint_investigations
+#         for this_study in this_trial['studies']:
+#             this_study = create_isa_study(this_study['studyDbId'])
+#             this_investigation.studies.append(this_study)
+#             endpoint_investigations.append(this_investigation)
+#     return endpoint_investigations
 
 
-def create_materials(endpoint):
-    """Create ISA studies from a BrAPI endpoint, starting from the studies, where there is no trial information."""
-    client = BrapiClient(endpoint)
-    for phenotype in client.get_phenotypes():
-        print(phenotype)
-        # for now, creating the sample name combining studyDbId and potDbId -
-        # eventually this should be observationUnitDbId
-        sample_name = phenotype['studyDbId'] + "_" + phenotype['plotNumber']
-        this_sample = Sample(name=sample_name)
-        that_source = Source(phenotype['germplasmName'], phenotype['germplasmDbId'])
-        this_sample.derives_from = that_source
+# def create_materials(endpoint):
+#     """Create ISA studies from a BrAPI endpoint, starting from the studies, where there is no trial information."""
+#     client = BrapiClient(endpoint)
+#     for phenotype in client.get_phenotypes():
+#         print(phenotype)
+#         # for now, creating the sample name combining studyDbId and potDbId -
+#         # eventually this should be observationUnitDbId
+#         sample_name = phenotype['studyDbId'] + "_" + phenotype['plotNumber']
+#         this_sample = Sample(name=sample_name)
+#         that_source = Source(phenotype['germplasmName'], phenotype['germplasmDbId'])
+#         this_sample.derives_from = that_source
 
 
 # def load_germplasms(study_identifier):
@@ -441,6 +441,7 @@ def create_isa_study(brapi_study_id, investigation):
 
     this_study = Study(filename="s_" + str(brapi_study_id) + ".txt")
     this_study.identifier = brapi_study['studyDbId']
+    this_study.description = brapi_study['additionalInfo']['description']
 
     if 'name' in brapi_study:
         this_study.title = brapi_study['name']
@@ -563,10 +564,11 @@ def create_isa_obs_data_from_obsvars(all_obs_units):
     # print(datafile_header)
     data_records.append(datafile_header)
     # print("number of observation units: ", len(all_obs_units))
+    
     for index in range(len(all_obs_units)):
 
         for item in range(len(all_obs_units[index]['observations'])):
-            data_record = ("assay-name_(" + str(all_obs_units[index]["observationUnitName"]) + ")_" +
+            data_record = (str(all_obs_units[index]['observations'][item]['observationVariableName']) + "_(" + str(all_obs_units[index]["observationUnitName"]) + ")_" +
                            str(item) + "\t" +
                            str(all_obs_units[index]['observations'][item]['observationVariableDbId']) + "\t" +
                            str(all_obs_units[index]['observations'][item]['value']) + "\t" +
@@ -608,20 +610,25 @@ def main(arg):
         # print("Trial: ", trial['trialDbId'], "|", trial['trialName'])
         logger.info('we start from a set of Trials')
         investigation = Investigation()
-
+        investigation.title = trial['trialName']
+        investigation.identifier = trial['trialDbId']
         output_directory = get_output_path( trial['trialName'] )
-
+        for brapicontact in trial['contacts']:
+            #NOTE: brapi has just name atribute -> no seperate first/last name
+            contact = Person(first_name="Joke", last_name="Baute", #still hardcoded
+            affiliation=brapicontact['institutionName'], email=brapicontact['email'])
+            investigation.contacts.append(contact)
+        publication = Publication(title= trial['additionalInfo']['title'], 
+        pubmed_id=trial['additionalInfo']['PMID'], doi=trial['additionalInfo']['doi'])
+        investigation.publications.append(publication)
         # iterating through the BRAPI studies associated to a given BRAPI trial:
         for study in trial['studies']:
 
-            # NOTA BENE: ugent doesnt have trials
             # GNPIS endpoint exemplar studies ['BTH_Dijon_2000_SetA1'.
             # 'BTH_Chaux_des_Prés_2007_SetA1','BTH_Rennes_2003_TECH']
             # TRITI endpoint exemplar studies ['1', '35' ,'1558']
             # CASSAVA endpoint exemaple studies ['3638']
             # BRAPI TEST SERVER = 'https://test-server.brapi.org/brapi/v1/'
-
-
             #study = get_study(study['studyDbId'])
             study_id = study['studyDbId']
             # NB: this method always create an ISA Assay Type
@@ -648,7 +655,7 @@ def main(arg):
             germ_counter = 0
 
             # Iterating through the germplasm considered as biosource,
-            # For eaich of them, we retrieve their attributes and create isa characteristics
+            # For each of them, we retrieve their attributes and create isa characteristics
             for germ in germplasms:
                 # print("GERM:", germ['germplasmName']) # germplasmDbId
                 # WARNING: BRAPIv1 endpoints are not consistently using these
@@ -840,7 +847,7 @@ def main(arg):
                 for j in range(len((obs_unit['observations']))):
                     # !!!: fix isatab.py to access other protocol_type values to enable Assay Tab serialization
                     phenotyping_process = Process(executes_protocol=phenotyping_protocol)
-                    phenotyping_process.name = "assay-name_(" + obs_unit["observationUnitName"] + ")_" + \
+                    phenotyping_process.name = obs_unit['observations'][j]['observationVariableName'] + "_(" + obs_unit["observationUnitName"] + ")_" + \
                                                str(j)
                     # print("assay name: ", j, "|", phenotyping_process.name)
                     phenotyping_process.inputs.append(this_sample)
