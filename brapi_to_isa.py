@@ -47,8 +47,9 @@ logger.info("\n----------------\ntrials IDs to be exported : "
             + str(TRIAL_IDS) + "\nstudy IDs to be exported : "
             + str(STUDY_IDS) + "\nTarget endpoint :  "
             + str(SERVER) + "\n----------------" )
-
-SERVER = 'https://urgi.versailles.inra.fr/gnpis-core-srv/brapi/v1/'
+                
+# SERVER = 'https://test-server.brapi.org/brapi/v1/'
+# SERVER = 'https://urgi.versailles.inra.fr/gnpis-core-srv/brapi/v1/'
 # SERVER = 'https://www.eu-sol.wur.nl/webapi/tomato/brapi/v1/'
 # SERVER = 'https://pippa.psb.ugent.be/pippa_experiments/brapi/v1/'
 # SERVER = 'https://triticeaetoolbox.org/wheat/brapi/v1/'
@@ -226,59 +227,60 @@ class BrapiClient:
 
         return all_obsvars
 
-    @staticmethod
-    def get_germplasm_chars(germplasm):
-        """" Given a BRAPI Germplasm ID, returns a list of ISA characteristics """
-        # TODO: switch BRAPI tags to MIAPPE Tags
-        charax_per_germplasm = {}
+    # @staticmethod
+    # def get_germplasm_chars(germplasm):
+    #     """" Given a BRAPI Germplasm ID, returns a list of ISA characteristics """
+    #     # TODO: switch BRAPI tags to MIAPPE Tags
+    #     charax_per_germplasm = {}
 
-        germplasm_id = germplasm['germplasmDbId']
-        these_characteristics = []
+    #     germplasm_id = germplasm['germplasmDbId']
+    #     these_characteristics = []
 
-        valid_categories = set()
-        valid_categories.add("germplasmSeedSource")
-        valid_categories.add("typeOfGermplasmStorageCode")
-        valid_categories.add("acquisitionDate")
-        valid_categories.add("defaultDisplayName")
-        valid_categories.add("germplasmPUI")
-        valid_categories.add("synonyms")
-        valid_categories.add("speciesAuthority")
-        valid_categories.add("species")
-        valid_categories.add("subtaxa")
-        valid_categories.add("accessionNumber")
-        valid_categories.add("pedigree")
-        valid_categories.add("subtaxaAuthority")
-        valid_categories.add("instituteCode")
-        valid_categories.add("germplasmName")
-        valid_categories.add("instituteName")
-        valid_categories.add("commonCropName")
-        valid_categories.add("germplasmDbId")
-        valid_categories.add("genus")
-        valid_categories.add("biologicalStatusOfAccessionCode")
-        valid_categories.add("countryOfOriginCode")
+    #     valid_categories = set()
+    #     valid_categories.add("germplasmSeedSource")
+    #     valid_categories.add("typeOfGermplasmStorageCode")
+    #     valid_categories.add("acquisitionDate")
+    #     valid_categories.add("defaultDisplayName")
+    #     valid_categories.add("germplasmPUI")
+    #     valid_categories.add("synonyms")
+    #     valid_categories.add("speciesAuthority")
+    #     valid_categories.add("species")
+    #     valid_categories.add("subtaxa")
+    #     valid_categories.add("accessionNumber")
+    #     valid_categories.add("pedigree")
+    #     valid_categories.add("subtaxaAuthority")
+    #     valid_categories.add("instituteCode")
+    #     valid_categories.add("germplasmName")
+    #     valid_categories.add("instituteName")
+    #     valid_categories.add("commonCropName")
+    #     valid_categories.add("germplasmDbId")
+    #     valid_categories.add("genus")
+    #     valid_categories.add("biologicalStatusOfAccessionCode")
+    #     valid_categories.add("countryOfOriginCode")
 
-        for item in germplasm.keys():
-            print("there", item)
-            if item in valid_categories:
-                if item == "subtaxa":
-                    miameitem = "Infraspecific name"
-                    these_characteristics.append(create_isa_characteristic(str(miameitem), str(germplasm[item])))
-                if item == "commonCropName":
-                    miameitem = "Organism"
-                    these_characteristics.append(create_isa_characteristic(str(miameitem), str(germplasm[item])))
-                if item == "accessionNumber":
-                    miameitem = "accnum"
-                    print(miameitem)
-                    these_characteristics.append(create_isa_characteristic(str(miameitem), str(germplasm[item])))
-                else:
-                    these_characteristics.append(create_isa_characteristic(str(item), str(germplasm[item])))
+    #     for item in germplasm.keys():
+    #         print("there", item)
+    #         if item in valid_categories:
+    #             if item == "subtaxa":
+    #                 miameitem = "Infraspecific name"
+    #                 these_characteristics.append(create_isa_characteristic(str(miameitem), str(germplasm[item])))
+    #             if item == "commonCropName":
+    #                 miameitem = "Organism"
+    #                 these_characteristics.append(create_isa_characteristic(str(miameitem), str(germplasm[item])))
+    #             if item == "accessionNumber":
+    #                 miameitem = "accnum"
+    #                 print(miameitem)
+    #                 these_characteristics.append(create_isa_characteristic(str(miameitem), str(germplasm[item])))
+    #             else:
+    #                 these_characteristics.append(create_isa_characteristic(str(item), str(germplasm[item])))
 
-            charax_per_germplasm[germplasm_id] = these_characteristics
+    #         charax_per_germplasm[germplasm_id] = these_characteristics
 
-        # return Source(germplasm_id, characteristics=these_characteristics)
-        return charax_per_germplasm
+    #     # return Source(germplasm_id, characteristics=these_characteristics)
+    #     return charax_per_germplasm
 
-    OBS_UNIT_CALL = " "
+    # NOTE not working well: 
+    # OBS_UNIT_CALL = " "
     # @staticmethod
     # def get_obs_unit_call():
     #     global OBS_UNIT_CALL
@@ -442,7 +444,7 @@ def create_isa_study(brapi_study_id, investigation):
     this_study = Study(filename="s_" + str(brapi_study_id) + ".txt")
     this_study.identifier = brapi_study['studyDbId']
     #NOTE: VIB BrAPI specific:
-    #this_study.description = brapi_study['additionalInfo']['description']
+    this_study.description = brapi_study['additionalInfo']['description']
 
     if 'name' in brapi_study:
         this_study.title = brapi_study['name']
@@ -614,15 +616,17 @@ def main(arg):
         investigation.title = trial['trialName']
         investigation.identifier = trial['trialDbId']
         output_directory = get_output_path( trial['trialName'] )
+        
         for brapicontact in trial['contacts']:
             #NOTE: brapi has just name atribute -> no seperate first/last name
-            contact = Person(first_name="Joke", last_name="Baute", #still hardcoded
+            ContactName = brapicontact['name'].split(' ')
+            contact = Person(first_name=ContactName[0], last_name=ContactName[1],
             affiliation=brapicontact['institutionName'], email=brapicontact['email'])
             investigation.contacts.append(contact)
         #NOTE: publication details from VIB BrAPI:
-        #publication = Publication(title= trial['additionalInfo']['title'], 
-        #pubmed_id=trial['additionalInfo']['PMID'], doi=trial['additionalInfo']['doi'])
-        #investigation.publications.append(publication)
+        publication = Publication(title= trial['additionalInfo']['title'], 
+        pubmed_id=trial['additionalInfo']['PMID'], doi=trial['additionalInfo']['doi'])
+        investigation.publications.append(publication)
 
         # iterating through the BRAPI studies associated to a given BRAPI trial:
         for study in trial['studies']:
@@ -948,27 +952,3 @@ if __name__ == '__main__':
     except Exception as e:
         logging.exception(e)
         sys.exit(1)
-
-#################################################################################
-# Creating ISA-Tab from GNPIS_BRAPI_V1 date [old call was EU_SOL_BRAPI_V1 data ]
-#################################################################################
-
-# investigations = create_isa_investigations(GNPIS_BRAPI_V1)
-# EU_SOL_BRAPI_V1
-
-# if not os.path.exists("output"):
-#     os.makedirs("output")
-#
-# if not os.path.exists("output/eu_sol"):
-#     os.makedirs("output/eu_sol")
-#
-#
-# for investigation in investigations:
-#     directory = "output/eu_sol/trial_"+str(investigation.identifier)
-#     if not os.path.exists(directory):
-#         os.makedirs(directory)
-#     isatools.isatab.dump(investigation, directory)
-#
-# ## Creating ISA-Tab from EU_SOL_BRAPI_V1 endpoint data [old call was on PIPPA endpoint data]
-#
-# create_materials(GNPIS_BRAPI_V1) #PIPPA_BRAPI_V1
