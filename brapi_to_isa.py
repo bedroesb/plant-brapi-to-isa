@@ -444,7 +444,7 @@ def create_isa_study(brapi_study_id, investigation):
     this_study = Study(filename="s_" + str(brapi_study_id) + ".txt")
     this_study.identifier = brapi_study['studyDbId']
     #NOTE: VIB BrAPI specific:
-    this_study.description = brapi_study['additionalInfo']['description']
+    # this_study.description = brapi_study['additionalInfo']['description']
 
     if 'name' in brapi_study:
         this_study.title = brapi_study['name']
@@ -624,9 +624,9 @@ def main(arg):
             affiliation=brapicontact['institutionName'], email=brapicontact['email'])
             investigation.contacts.append(contact)
         #NOTE: publication details from VIB BrAPI:
-        publication = Publication(title= trial['additionalInfo']['title'], 
-        pubmed_id=trial['additionalInfo']['PMID'], doi=trial['additionalInfo']['doi'])
-        investigation.publications.append(publication)
+        # publication = Publication(title= trial['additionalInfo']['title'], 
+        # pubmed_id=trial['additionalInfo']['PMID'], doi=trial['additionalInfo']['doi'])
+        # investigation.publications.append(publication)
 
         # iterating through the BRAPI studies associated to a given BRAPI trial:
         for study in trial['studies']:
